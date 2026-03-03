@@ -12,18 +12,24 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.viewModels
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelStoreOwner
 import androidx.room.Room
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
+import java.util.concurrent.TimeUnit
 import com.example.activelife.data.ActivityRepository
 import com.example.activelife.data.AppDatabase
+import com.example.activelife.sensors.DevicePostureSensor
 import com.example.activelife.sensors.StepSensor
 import com.example.activelife.services.ActivityForegroundService
 import com.example.activelife.ui.ActivityViewModel
 import com.example.activelife.ui.MainScreen
+import com.example.activelife.ui.ViewModelFactory
 import com.example.activelife.ui.theme.ActiveLifeTheme
+import com.example.activelife.worker.SittingWorker
 
 class MainActivity : ComponentActivity() {
 
@@ -50,7 +56,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // A. Setup Notification Channel (Crucial for alerts to work)
+        // A. Setup Notification Channel
         createNotificationChannel()
 
         // B. Database & Repository Setup
@@ -63,25 +69,31 @@ class MainActivity : ComponentActivity() {
         val stepSensor = StepSensor(applicationContext)
         val repository = ActivityRepository(db.activityDao(), stepSensor, applicationContext)
 
-        val viewModelFactory = object : ViewModelProvider.Factory {
-            override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                if (modelClass.isAssignableFrom(ActivityViewModel::class.java)) {
-                    @Suppress("UNCHECKED_CAST")
-                    return ActivityViewModel(repository) as T
-                }
-                throw IllegalArgumentException("Unknown ViewModel class")
-            }
-        }
-
-        val viewModel: ActivityViewModel by viewModels { viewModelFactory }
+        // C. Clean ViewModel Initialization
+        val postureSensor = DevicePostureSensor(this@MainActivity)
+        val factory = ViewModelFactory(repository, postureSensor)
+        val owner: ViewModelStoreOwner = this@MainActivity
+        val viewModel = ViewModelProvider(owner, factory)[ActivityViewModel::class.java]
 
         viewModel.startMonitoring()
 
-        // C. Check Permissions on Launch
+        // D. Check Permissions & Start Services
         checkPermissions()
         val serviceIntent = Intent(this, ActivityForegroundService::class.java)
         ContextCompat.startForegroundService(this, serviceIntent)
 
+        // E. Start the Sitting Reminder Background Engine
+        val sittingWorkRequest = PeriodicWorkRequestBuilder<SittingWorker>(
+            15, TimeUnit.MINUTES
+        ).build()
+
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            "SittingReminderWork",
+            ExistingPeriodicWorkPolicy.KEEP,
+            sittingWorkRequest
+        )
+
+        // F. Launch UI
         setContent {
             ActiveLifeTheme {
                 MainScreen(viewModel)
@@ -90,9 +102,7 @@ class MainActivity : ComponentActivity() {
     }
 
     // --- Helper Functions ---
-
     private fun checkPermissions() {
-        // 1. Check Physical Activity (Android 10+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             if (ContextCompat.checkSelfPermission(
                     this,
@@ -103,7 +113,6 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        // 2. Check Notifications (Android 13+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(
                     this,
@@ -116,8 +125,6 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun createNotificationChannel() {
-        // Create the NotificationChannel, but only on API 26+ because
-        // the NotificationChannel class is new and not in the support library
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val name = "ActiveLife Alerts"
             val descriptionText = "Reminders to stand up and move"
@@ -125,7 +132,6 @@ class MainActivity : ComponentActivity() {
             val channel = NotificationChannel("SITTING_CHANNEL_ID", name, importance).apply {
                 description = descriptionText
             }
-            // Register the channel with the system
             val notificationManager: NotificationManager =
                 getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.createNotificationChannel(channel)

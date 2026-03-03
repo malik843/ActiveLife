@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DirectionsRun
+import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Weekend
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -21,6 +22,7 @@ import com.example.activelife.data.ActivityLog
 import java.text.SimpleDateFormat
 import java.util.*
 
+// Local color variables so this file can compile independently
 
 
 @Composable
@@ -28,6 +30,9 @@ fun ActivityDetectionScreen(viewModel: ActivityViewModel) {
     // Collect Real-Time Data (Status + History)
     val currentStatus by viewModel.currentStatus.collectAsState()
     val historyLogs by viewModel.todayLogs.collectAsState()
+
+    // --- THIS IS THE MISSING LINE! ---
+    val livePosture by viewModel.livePosture.collectAsState()
 
     Column(
         modifier = Modifier
@@ -55,10 +60,10 @@ fun ActivityDetectionScreen(viewModel: ActivityViewModel) {
                 verticalArrangement = Arrangement.Center
             ) {
                 // Logic to choose Icon based on Live Status
-                val statusData = when (currentStatus) {
-                    "WALKING" -> Triple(Icons.Default.DirectionsRun, LimeAccent, "Walking")
-                    "RUNNING" -> Triple(Icons.Default.DirectionsRun, LimeAccent, "Running")
-                    else -> Triple(Icons.Default.Weekend, TextSecondary, "Sitting / Still")
+                val statusData = when (livePosture) {
+                    "ACTIVE" -> Triple(Icons.Default.DirectionsRun, LimeAccent, "Active")
+                    "READY" -> Triple(Icons.Default.Phone, Color(0xFFFFD54F), "Ready")
+                    else -> Triple(Icons.Default.Weekend, TextSecondary, "Still")
                 }
 
                 // Icon Circle

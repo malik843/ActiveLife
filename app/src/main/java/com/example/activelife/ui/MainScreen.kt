@@ -36,7 +36,7 @@ fun MainScreen(viewModel: ActivityViewModel) {
             NavHost(navController, startDestination = "dashboard") {
                 composable("dashboard") {
                     // We will build the new Dashboard in Phase 2
-                    DashboardScreen(viewModel)
+                    DashboardScreen(viewModel,navController)
                 }
                 composable("activity") {
                     ActivityDetectionScreen(viewModel)
@@ -47,6 +47,9 @@ fun MainScreen(viewModel: ActivityViewModel) {
                 }
                 composable("profile") {
                     Text("Profile Screen", color = Color.White)
+                }
+                composable("notifications") {
+                    NotificationsScreen(navController)
                 }
             }
         }

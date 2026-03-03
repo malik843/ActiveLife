@@ -5,9 +5,11 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.ViewModelProvider
 import com.example.activelife.data.ActivityLog
 import com.example.activelife.data.ActivityRepository
+import com.example.activelife.sensors.DevicePostureSensor
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -15,22 +17,38 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-class ActivityViewModel(private val repository: ActivityRepository) : ViewModel() {
+class ActivityViewModel(
+    private val repository: ActivityRepository,
+    private val postureSensor: DevicePostureSensor
+) : ViewModel() {
 
     // =================================================================================
-    // PART 1: LIVE SENSOR DATA (Kept from your previous version)
+    // LIVE POSTURE SENSOR (This is what was missing!)
     // =================================================================================
 
-    // 1. Current Status (Sitting/Walking) - Derived from Database Logs
+    // These two lines MUST be right here at the top level of the class
+    private val _livePosture = MutableStateFlow("STILL")
+    val livePosture: StateFlow<String> = _livePosture.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            postureSensor.liveState.collect { state ->
+                _livePosture.value = state
+            }
+        }
+    }
+
+    // =================================================================================
+    // OTHER SENSOR DATA & CALCULATIONS
+    // =================================================================================
+
     val currentStatus: StateFlow<String> = repository.getLastLogFlow()
         .map { log -> log?.activityType ?: "STILL" }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "STILL")
 
-    // 2. Live Steps - Derived from Sensor
     val steps: StateFlow<Int> = repository.currentSteps
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
-    // 3. Calculated Metrics (Math logic preserved)
     val calories: StateFlow<Int> = steps.map { (it * 0.04).toInt() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
@@ -47,29 +65,24 @@ class ActivityViewModel(private val repository: ActivityRepository) : ViewModel(
 
     val todayLogs: StateFlow<List<ActivityLog>> = repository.getRecentLogsFlow()
         .map {
-            // Query for logs since midnight
             val midnight = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
             repository.getLogsSince(midnight)
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-
     // =================================================================================
-    // PART 2: NEW CHART DATA (The only new addition)
+    // WEEKLY CHART DATA
     // =================================================================================
 
-    // Logic: Get DB data -> Format it for the Bar Chart
     val weeklyData: StateFlow<List<Pair<String, Int>>> = repository.getWeeklySteps()
         .map { historyList ->
             val result = mutableListOf<Pair<String, Int>>()
             val today = LocalDate.now()
 
-            // Generate the last 7 days labels (e.g. "Mon", "Tue")
             for (i in 6 downTo 0) {
                 val dateToCheck = today.minusDays(i.toLong())
-                val dateString = dateToCheck.toString() // "2026-02-17"
+                val dateString = dateToCheck.toString()
 
-                // If DB has data for this date, use it. Otherwise, 0.
                 val steps = historyList.find { it.date == dateString }?.stepCount ?: 0
                 val dayLabel = dateToCheck.format(DateTimeFormatter.ofPattern("EEE"))
 
@@ -80,7 +93,7 @@ class ActivityViewModel(private val repository: ActivityRepository) : ViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // =================================================================================
-    // PART 3: ACTIONS
+    // ACTIONS
     // =================================================================================
 
     fun startMonitoring() {
@@ -88,12 +101,18 @@ class ActivityViewModel(private val repository: ActivityRepository) : ViewModel(
     }
 }
 
-// Factory remains exactly the same
-class ViewModelFactory(private val repository: ActivityRepository) : ViewModelProvider.Factory {
+// =================================================================================
+// VIEW MODEL FACTORY
+// =================================================================================
+
+class ViewModelFactory(
+    private val repository: ActivityRepository,
+    private val postureSensor: DevicePostureSensor
+) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(ActivityViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return ActivityViewModel(repository) as T
+            return ActivityViewModel(repository, postureSensor) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

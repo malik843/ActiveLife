@@ -8,6 +8,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyRow
@@ -28,10 +29,11 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
 
 
 @Composable
-fun DashboardScreen(viewModel: ActivityViewModel) {
+fun DashboardScreen(viewModel: ActivityViewModel, navController: NavController) {
     // Live Data from ViewModel
     val steps by viewModel.steps.collectAsState()
     val calories by viewModel.calories.collectAsState()
@@ -46,7 +48,7 @@ fun DashboardScreen(viewModel: ActivityViewModel) {
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp, vertical = 24.dp)
     ) {
-        DashboardTopBar()
+        DashboardTopBar(navController)
         Spacer(modifier = Modifier.height(32.dp))
 
         DateSelector()
@@ -67,41 +69,53 @@ fun DashboardScreen(viewModel: ActivityViewModel) {
 }
 
 @Composable
-fun DashboardTopBar() {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        // New Image Profile Avatar
-        Image(
-            painter = painterResource(id = R.drawable.profile_avatar), // Make sure you added a profile_avatar image to res/drawable!
-            contentDescription = "Profile Picture",
-            contentScale = ContentScale.Crop,
+fun DashboardTopBar(navController: NavController) {
+    // Local colors so we don't cause any conflicts!
+    val cardBackground = Color(0xFF262626)
+    val textSecondary = Color(0xFF969696)
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween, // <-- This pushes the profile left and the bell right!
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // --- LEFT SIDE: Profile Picture & Text ---
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Image(
+                painter = painterResource(id = R.drawable.profile_avatar),
+                contentDescription = "Profile Picture",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .border(2.dp, cardBackground, CircleShape)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(text = "Hello, ", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_wave),
+                        contentDescription = "Wave",
+                        tint = Color(0xFFFFD54F),
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                Text(text = "Sodiq", color = Color.White, fontSize = 16.sp) // Updated to match your screenshot!
+            }
+        }
+
+        // --- RIGHT SIDE: Clickable Notification Bell ---
+        Surface(
             modifier = Modifier
                 .size(48.dp)
-                .clip(CircleShape)
-                .border(2.dp, CardBackground, CircleShape)
-        )
-        Spacer(modifier = Modifier.width(12.dp))
-        Column {
-            // New Waving Hand Vector
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(text = "Hello, ", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                Icon(
-                    painter = painterResource(id = R.drawable.ic_wave),
-                    contentDescription = "Wave",
-                    tint = Color(0xFFFFD54F), // Golden Yellow
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-            Text(text = "Sodiq", color = Color.White, fontSize = 16.sp)
-        }
-    }
-
-        Surface(
-            modifier = Modifier.size(48.dp),
+                .clickable { navController.navigate("notifications") },
             shape = CircleShape,
-            color = CardBackground
+            color = cardBackground
         ) {
             Box(contentAlignment = Alignment.Center) {
-                Icon(Icons.Default.NotificationsNone, contentDescription = "Alerts", tint = TextSecondary)
+                Icon(Icons.Default.NotificationsNone, contentDescription = "Alerts", tint = textSecondary)
+                // Red Notification Dot
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
@@ -112,7 +126,7 @@ fun DashboardTopBar() {
             }
         }
     }
-
+}
 @Composable
 fun DateSelector() {
     Column {
