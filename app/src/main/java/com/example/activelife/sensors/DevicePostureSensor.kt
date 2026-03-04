@@ -26,15 +26,10 @@ class DevicePostureSensor(context: Context) {
                     val magnitude = sqrt((x * x + y * y + z * z).toDouble())
 
                     // State Logic based on Gravity and Acceleration
-                    val state = when {
-                        // ACTIVE: Significant movement / bouncing (Walking/Running)
-                        magnitude > 12.0 || magnitude < 7.0 -> "ACTIVE"
-
-                        // STILL: Flat on a table (Z-axis takes all gravity ~9.8, X and Y are near 0)
-                        z > 8.5 && Math.abs(x) < 2.0 && Math.abs(y) < 2.0 -> "STILL"
-
-                        // READY: In hand / tilted (Gravity is distributed across axes)
-                        else -> "READY"
+                    val state = if (magnitude > 12.0 || magnitude < 7.0) {
+                        "ACTIVE"
+                    } else {
+                        "STILL"
                     }
 
                     trySend(state)

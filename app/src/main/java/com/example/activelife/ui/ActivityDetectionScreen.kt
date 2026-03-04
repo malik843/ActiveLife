@@ -62,7 +62,6 @@ fun ActivityDetectionScreen(viewModel: ActivityViewModel) {
                 // Logic to choose Icon based on Live Status
                 val statusData = when (livePosture) {
                     "ACTIVE" -> Triple(Icons.Default.DirectionsRun, LimeAccent, "Active")
-                    "READY" -> Triple(Icons.Default.Phone, Color(0xFFFFD54F), "Ready")
                     else -> Triple(Icons.Default.Weekend, TextSecondary, "Still")
                 }
 

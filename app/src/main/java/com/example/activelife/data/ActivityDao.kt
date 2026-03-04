@@ -23,6 +23,12 @@ interface ActivityDao {
     @Query("SELECT * FROM activity_logs ORDER BY timestamp DESC LIMIT 20")
     fun getRecentLogsFlow(): Flow<List<ActivityLog>>
 
+    @androidx.room.Insert
+    suspend fun insertNotification(notification: com.example.activelife.data.NotificationEntity)
+
+    @androidx.room.Query("SELECT * FROM notifications ORDER BY timestamp DESC")
+    fun getAllNotifications(): kotlinx.coroutines.flow.Flow<List<com.example.activelife.data.NotificationEntity>>
+
 
 
     @Insert(onConflict = androidx.room.OnConflictStrategy.REPLACE)

@@ -43,6 +43,7 @@ class ActivityRepository(
 
     // In data/ActivityRepository.kt
 
+
     fun startTracking() {
         val transitions = mutableListOf<ActivityTransition>()
 
@@ -124,6 +125,9 @@ class ActivityRepository(
     // In ActivityRepository.kt
     fun getLastLogFlow() = activityDao.getLastLogFlow()
     // In data/ActivityRepository.kt
+
+    // Expose the notifications safely!
+    fun getAllNotificationsFlow() = activityDao.getAllNotifications()
 
     fun getWeeklySteps() = activityDao.getLast7Days()
 

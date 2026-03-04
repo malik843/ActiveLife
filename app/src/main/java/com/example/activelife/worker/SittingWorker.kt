@@ -42,6 +42,14 @@ class SittingWorker(
 
             if (lastLog.timestamp < testTimeAgo) {
                 sendNotification()
+
+                database.activityDao().insertNotification(
+                    com.example.activelife.data.NotificationEntity(
+                        title = "🚶 Stand up now",
+                        message = "You've been inactive for 2 hours. Time to stretch!",
+                        isWarning = true
+                    )
+                )
             }
         }
 

@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.ViewModelProvider
 import com.example.activelife.data.ActivityLog
 import com.example.activelife.data.ActivityRepository
+import com.example.activelife.data.NotificationEntity
 import com.example.activelife.sensors.DevicePostureSensor
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -36,7 +37,17 @@ class ActivityViewModel(
                 _livePosture.value = state
             }
         }
+
+        viewModelScope.launch {
+            repository.currentSteps.collect { currentStepCount ->
+                if (currentStepCount > 0) {
+                    repository.saveDailySteps(currentStepCount)
+                }
+            }
+        }
     }
+
+
 
     // =================================================================================
     // OTHER SENSOR DATA & CALCULATIONS
@@ -62,6 +73,9 @@ class ActivityViewModel(
             else -> 0.0
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
+
+    val notifications: StateFlow<List<com.example.activelife.data.NotificationEntity>> = repository.getAllNotificationsFlow()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val todayLogs: StateFlow<List<ActivityLog>> = repository.getRecentLogsFlow()
         .map {

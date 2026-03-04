@@ -49,7 +49,7 @@ fun MainScreen(viewModel: ActivityViewModel) {
                     Text("Profile Screen", color = Color.White)
                 }
                 composable("notifications") {
-                    NotificationsScreen(navController)
+                    NotificationScreen(navController, viewModel)
                 }
             }
         }
