@@ -1,5 +1,9 @@
 package com.example.activelife.ui
 
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import com.example.activelife.R
 import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.Image
@@ -38,6 +42,12 @@ fun DashboardScreen(viewModel: ActivityViewModel, navController: NavController) 
     val steps by viewModel.steps.collectAsState()
     val calories by viewModel.calories.collectAsState()
     val distance by viewModel.distance.collectAsState()
+    val sittingTime by viewModel.sittingTimeFormatted.collectAsState()
+    // This grabs today, and creates a list of 7 days (3 days ago to 3 days from now)
+    val today = LocalDate.now()
+    val weekDates = (-3..3).map { today.plusDays(it.toLong()) }
+
+
 
     val stepGoal = 10000
 
@@ -57,14 +67,14 @@ fun DashboardScreen(viewModel: ActivityViewModel, navController: NavController) 
         CircularStepProgress(steps = steps, goal = stepGoal)
         Spacer(modifier = Modifier.height(40.dp))
 
-        StreakCard()
+//        StreakCard()
+//        Spacer(modifier = Modifier.height(24.dp))
+
+        MetricsRow(calories = calories, distance = distance, sittingTime = sittingTime)
         Spacer(modifier = Modifier.height(24.dp))
 
-        MetricsRow(calories = calories, distance = distance)
-        Spacer(modifier = Modifier.height(24.dp))
-
-        ReminderNudge()
-        Spacer(modifier = Modifier.height(80.dp))
+//        ReminderNudge()
+//        Spacer(modifier = Modifier.height(80.dp))
     }
 }
 
@@ -128,31 +138,46 @@ fun DashboardTopBar(navController: NavController) {
     }
 }
 @Composable
-fun DateSelector() {
+fun DateSelector(todayDate: String = LocalDate.now().format(DateTimeFormatter.ofPattern("MMMM d, yyyy"))) {
     Column {
+        // --- TOP HEADER (Unchanged, already perfect) ---
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(text = "February 2026", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text(
+                text = todayDate,
+                color = Color.White,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold
+            )
             Row {
                 Surface(shape = CircleShape, color = CardBackground, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.Default.ChevronLeft, contentDescription = "Previous", tint = TextSecondary, modifier = Modifier.padding(6.dp))
+                    Icon(Icons.Default.ChevronLeft, contentDescription = null, tint = Color.White, modifier = Modifier.padding(8.dp))
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Surface(shape = CircleShape, color = CardBackground, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.Default.ChevronRight, contentDescription = "Next", tint = TextSecondary, modifier = Modifier.padding(6.dp))
+                    Icon(Icons.Default.ChevronRight, contentDescription = null, tint = Color.White, modifier = Modifier.padding(8.dp))
                 }
             }
         }
 
         Spacer(modifier = Modifier.height(24.dp))
 
+        // --- DYNAMIC 7-DAY CALENDAR ---
+        val today = LocalDate.now()
+        // Generate a list of 7 days: 3 days ago, today, and 3 days into the future
+        val weekDates = (-3..3).map { today.plusDays(it.toLong()) }
+
         LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            val days = listOf("01\nSun", "02\nMon", "03\nTue", "04\nWed", "05\nThu")
-            items(days.size) { index ->
-                val isActive = index == 2
+            // Loop through our dynamic dates instead of the hardcoded list
+            items(weekDates.size) { index ->
+                val currentDate = weekDates[index]
+                val isActive = currentDate == today // Automatically highlights today's date!
+
                 Surface(
                     shape = RoundedCornerShape(24.dp),
                     color = if (isActive) LimeAccent else CardBackground,
@@ -162,10 +187,22 @@ fun DateSelector() {
                         verticalArrangement = Arrangement.Center,
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        val split = days[index].split("\n")
-                        Text(text = split[0], color = if (isActive) DarkBackground else Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        // Dynamically format the number and the day name
+                        val dayNumber = currentDate.format(DateTimeFormatter.ofPattern("dd"))
+                        val dayName = currentDate.format(DateTimeFormatter.ofPattern("EEE"))
+
+                        Text(
+                            text = dayNumber,
+                            color = if (isActive) DarkBackground else Color.White,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold
+                        )
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text(text = split[1], color = if (isActive) DarkBackground else TextSecondary, fontSize = 14.sp)
+                        Text(
+                            text = dayName,
+                            color = if (isActive) DarkBackground else TextSecondary,
+                            fontSize = 14.sp
+                        )
                     }
                 }
             }
@@ -233,44 +270,48 @@ fun CircularStepProgress(steps: Int, goal: Int) {
     }
 }
 
-@Composable
-fun StreakCard() {
-    Surface(
-        shape = RoundedCornerShape(16.dp),
-        color = CardBackground,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                painter = painterResource(id = R.drawable.ic_fire),
-                contentDescription = "Streak",
-                tint = Color(0xFFFF9800), // Fire Orange
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = "5-day movement streak",
-                color = Color.White,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold
-            )
-        }
-    }
-}
+//@Composable
+//fun StreakCard() {
+//    Surface(
+//        shape = RoundedCornerShape(16.dp),
+//        color = CardBackground,
+//        modifier = Modifier.fillMaxWidth()
+//    ) {
+//        Row(verticalAlignment = Alignment.CenterVertically) {
+//            Icon(
+//                painter = painterResource(id = R.drawable.ic_fire),
+//                contentDescription = "Streak",
+//                tint = Color(0xFFFF9800), // Fire Orange
+//                modifier = Modifier.size(20.dp)
+//            )
+//            Spacer(modifier = Modifier.width(8.dp))
+//            Text(
+//                text = "5-day movement streak",
+//                color = Color.White,
+//                fontSize = 16.sp,
+//                fontWeight = FontWeight.Bold
+//            )
+//        }
+//    }
+//}
+
 
 @Composable
-fun MetricsRow(calories: Int, distance: Double) {
+fun MetricsRow(calories: Int, distance: Double, sittingTime: String) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+
+
+
         MetricCard(
             modifier = Modifier.weight(1f),
             icon = Icons.Default.Weekend,
             iconTint = LimeAccent,
             title = "Sitting Time",
-            value = "3h 42m",
-            subtext = "Active Burned out",
+            value = sittingTime, // <-- NO QUOTES! Just pass the live variable here
+            subtext = "Active Burned out", // Feel free to change this text too if you want!
             hasProgressBar = true
         )
 
@@ -335,89 +376,3 @@ fun MetricCard(
     }
 }
 
-@Composable
-fun ReminderNudge() {
-    Surface(
-        shape = RoundedCornerShape(24.dp),
-        color = CardBackground,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(modifier = Modifier.padding(24.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "You've been inactive for 3h 42m",
-                        color = Color.White,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Nudge: Circulation is slowing down",
-                        color = TextSecondary,
-                        fontSize = 14.sp
-                    )
-                }
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = LimeAccent.copy(alpha = 0.1f)
-                ) {
-                    Icon(
-                        Icons.Default.AirlineSeatReclineNormal,
-                        contentDescription = "Sitting",
-                        tint = LimeAccent,
-                        modifier = Modifier.padding(12.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(text = "Current Stasis", color = TextSecondary, fontSize = 12.sp)
-                Text(text = "2h Limit", color = TextSecondary, fontSize = 12.sp)
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            LinearProgressIndicator(
-                progress = { 0.85f },
-                modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
-                color = LimeAccent,
-                trackColor = DarkBackground
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Button(
-                onClick = { /* TODO */ },
-                colors = ButtonDefaults.buttonColors(containerColor = LimeAccent),
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.fillMaxWidth().height(56.dp)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_walk), // Your walking icon
-                        contentDescription = "Walk",
-                        tint = DarkBackground, // Dark icon on Lime button
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Stand up now",
-                        color = DarkBackground,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-        }
-    }
-}

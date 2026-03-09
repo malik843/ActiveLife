@@ -61,10 +61,11 @@ class MainActivity : ComponentActivity() {
 
         // B. Database & Repository Setup
         val db = Room.databaseBuilder(
-            applicationContext,
-            AppDatabase::class.java,
-            "activelife-db"
-        ).build()
+                applicationContext,
+                AppDatabase::class.java,
+                "activelife-db"
+            ).fallbackToDestructiveMigration(false)
+            .build()
 
         val stepSensor = StepSensor(applicationContext)
         val repository = ActivityRepository(db.activityDao(), stepSensor, applicationContext)

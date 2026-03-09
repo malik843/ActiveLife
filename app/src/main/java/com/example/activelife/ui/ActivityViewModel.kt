@@ -84,6 +84,37 @@ class ActivityViewModel(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    private val minuteTicker = kotlinx.coroutines.flow.flow {
+        while (true) {
+            emit(System.currentTimeMillis())
+            kotlinx.coroutines.delay(60000) // tick every 1 minute
+        }
+    }
+
+    // 2. The accurate sitting time calculator
+    val sittingTimeFormatted: StateFlow<String> = kotlinx.coroutines.flow.combine(todayLogs, minuteTicker) { logs, currentTime ->
+        var totalSittingMillis = 0L
+        val sortedLogs = logs.sortedBy { it.timestamp }
+
+        for (i in sortedLogs.indices) {
+            val currentLog = sortedLogs[i]
+            if (currentLog.activityType == "STILL") {
+                // If it's STILL, calculate time until the next status change (or until RIGHT NOW if they are currently sitting)
+                val nextTimestamp = if (i + 1 < sortedLogs.size) {
+                    sortedLogs[i+1].timestamp
+                } else {
+                    currentTime
+                }
+                totalSittingMillis += (nextTimestamp - currentLog.timestamp)
+            }
+        }
+
+        val hours = (totalSittingMillis / (1000 * 60 * 60)).toInt()
+        val minutes = ((totalSittingMillis / (1000 * 60)) % 60).toInt()
+
+        if (hours > 0) "${hours}h ${minutes}m" else "${minutes}m"
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "0m")
+
     // =================================================================================
     // WEEKLY CHART DATA
     // =================================================================================
